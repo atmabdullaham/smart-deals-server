@@ -27,6 +27,20 @@ async function run() {
     await client.connect();
     const db = client.db('smart_db');
     const productsCollection = db.collection('products')
+    const bidsCollection = db.collection('bids')
+    const usersCollection = db.collection('users')
+
+    app.post("/users", async(req, res)=>{
+      const newUser = req.body;
+      const email = req.body.email;
+      const query = {email: email}
+      const existingUser = await usersCollection.findOne(query)
+      if(!existingUser){
+      const result = await usersCollection.insertOne(newUser);
+      res.send(result)
+      }      
+      
+    })
 
     app.post('/products', async(req, res)=>{
         const newProducts = req.body;
@@ -78,6 +92,12 @@ app.get("/products/:id", async(req,res)=>{
     })
 
     
+    // bids related api
+    app.get('/bids', async(req, res)=>{
+      const cursor = bidsCollection.find()
+      const result = cursor.toArray()
+      res.send(result)
+    })
 
 
     await client.db("admin").command({ ping: 1 });
