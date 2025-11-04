@@ -47,6 +47,14 @@ async function run() {
         const result = await productsCollection.insertOne(newProducts)
         res.send(result);
     })
+
+    app.get('/latest-products', async(req, res)=>{
+      const projectFields = { title: 1, price_min:1, price_max:1,image:1 };
+      const cursor = productsCollection.find().project(projectFields).sort({created_at: -1}).limit(6)
+      const result = await cursor.toArray()
+      res.send(result)
+
+    })
 // get all products 
 app.get("/products", async(req,res)=>{
   // const projectFields = {title:1, price_min:1, price_max:1, image:1}
@@ -59,6 +67,8 @@ app.get("/products", async(req,res)=>{
   const result = await cursor.toArray()
   res.send(result)
 })
+
+
 
 //find single data 
 app.get("/products/:id", async(req,res)=>{
@@ -87,7 +97,8 @@ app.get("/products/:id", async(req,res)=>{
     app.delete('/products/:id', async(req, res)=>{
       const id = req.params.id;
       const query = {_id: new ObjectId(id)};
-      const result = await productsCollection.deleteOne(query);
+      const cursor = bidsCollection.find(query).sort({bid_amount: -1})
+      const result = await cursor.toArray()
       res.send(result)
     })
 
@@ -98,6 +109,46 @@ app.get("/products/:id", async(req,res)=>{
       const result = cursor.toArray()
       res.send(result)
     })
+    app.post('/bids', async(req, res)=>{
+      const newBid = req.body;
+      const product_id = newBid.product_id;
+      const cursor = {product_id:product_id};
+      try{
+        const bidAlready =await bidsCollection.findOne(cursor);
+        if(bidAlready){
+        res.status(409).send({
+          status:false,
+          message: "you have  already bid for this product",
+          existingBid: bidAlready
+        })
+      }
+      const result = await bidsCollection.insertOne({
+      ...newBid,
+      bid_time: new Date(), 
+    });
+    res.status(201).send({
+      success: true,
+      message: "Bid placed successfully.",
+      data: result,
+    });
+      }catch(error){
+        res.status(500).send({
+          success: false,
+          message: "server error while submittion bid",
+          error:error.message
+        })
+      }
+      
+      
+    })
+app.get('/products/bids/:productId', async(req,res)=>{
+  const product_id = req.params.productId;
+  const query = {product_id: product_id};
+  const result = await bidsCollection.findOne(query)
+  res.send(result)
+
+})
+    
 
 
     await client.db("admin").command({ ping: 1 });
