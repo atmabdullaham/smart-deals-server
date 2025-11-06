@@ -55,8 +55,9 @@ async function run() {
       res.send(result)
 
     })
-// get all products 
-app.get("/products", async(req,res)=>{
+
+  // get all products 
+ app.get("/products", async(req,res)=>{
   // const projectFields = {title:1, price_min:1, price_max:1, image:1}
   const email = (req.query.email);
   const query = {}
@@ -97,7 +98,7 @@ app.get("/products/:id", async(req,res)=>{
     app.delete('/products/:id', async(req, res)=>{
       const id = req.params.id;
       const query = {_id: new ObjectId(id)};
-      const cursor = bidsCollection.find(query).sort({bid_amount: -1})
+      const cursor = bidsCollection.find(query)
       const result = await cursor.toArray()
       res.send(result)
     })
@@ -105,48 +106,48 @@ app.get("/products/:id", async(req,res)=>{
     
     // bids related api
     app.get('/bids', async(req, res)=>{
-      const cursor = bidsCollection.find()
-      const result = cursor.toArray()
-      res.send(result)
+      const query = {};
+      if(req.query.email){
+        query.bidder_email = req.query.email
+      }
+      if(query.bidder_email){
+        const result = await bidsCollection.find(query).toArray()
+        res.send(result)
+      }else{
+        const result = await bidsCollection.find().toArray()
+        res.send(result)
+      }
     })
-    app.post('/bids', async(req, res)=>{
+ 
+    app.post("/bids", async(req,res)=>{
       const newBid = req.body;
-      const product_id = newBid.product_id;
-      const cursor = {product_id:product_id};
-      try{
-        const bidAlready =await bidsCollection.findOne(cursor);
-        if(bidAlready){
-        res.status(409).send({
-          status:false,
-          message: "you have  already bid for this product",
-          existingBid: bidAlready
-        })
-      }
-      const result = await bidsCollection.insertOne({
-      ...newBid,
-      bid_time: new Date(), 
-    });
-    res.status(201).send({
-      success: true,
-      message: "Bid placed successfully.",
-      data: result,
-    });
-      }catch(error){
-        res.status(500).send({
-          success: false,
-          message: "server error while submittion bid",
-          error:error.message
-        })
-      }
-      
-      
+      // const bidder_email = newBid.bidder_email;
+      // const query = {bidder_email:bidder_email};
+      // const alreadyExists = await bidsCollection.findOne(query)
+    
+        const result = await bidsCollection.insertOne(newBid);
+        res.send(result)
+
     })
+
+
 app.get('/products/bids/:productId', async(req,res)=>{
   const product_id = req.params.productId;
   const query = {product_id: product_id};
-  const result = await bidsCollection.findOne(query)
+  const result = await bidsCollection
+  .find(query)
+  .sort({bid_amount: -1})
+  .map(bid => ({ ...bid, bid_amount: Number(bid.bid_amount) }))
+  .toArray()
   res.send(result)
 
+})
+
+app.delete("/bids/:id", async(req,res)=>{
+  const id = req.params.id;
+  const query = {_id: new ObjectId(id)}
+  const result = await bidsCollection.deleteOne(query)
+  res.send(result)
 })
     
 
